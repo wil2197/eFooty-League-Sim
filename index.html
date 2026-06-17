@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eFootball League Simulator</title>
+<style>
+  :root {
+    --bg: #0b1120;
+    --card: #151e32;
+    --accent: #22c55e;
+    --accent-dim: #16a34a;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --border: #1e293b;
+    --danger: #ef4444;
+    --blue: #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  #app { max-width: 900px; margin: 0 auto; padding: 20px; }
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  h1 { font-size: 1.8rem; color: var(--accent); outline: none; }
+  nav {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  nav button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all .15s;
+  }
+  nav button.active, nav button:hover {
+    background: var(--accent);
+    color: #0b1120;
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 { margin-bottom: 12px; font-size: 1.2rem; color: var(--text); }
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 12px 0;
+  }
+  input[type="text"], input[type="number"], input[type="file"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 1rem;
+    width: 100%;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+  .rating-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .stars {
+    color: #f59e0b;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    margin-left: 6px;
+  }
+  .stars.empty {
+    color: #475569;
+  }
+  button {
+    background: var(--accent-dim);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: background .15s;
+  }
+  button:hover { background: var(--accent); }
+  button.secondary { background: #334155; }
+  button.secondary:hover { background: #475569; }
+  button.danger { background: var(--danger); }
+  button.danger:hover { background: #f87171; }
+  .team-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .team-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.03);
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .team-ratings {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    background: var(--accent-dim);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .actions button { flex: 1; min-width: 200px; }
+  .matchday-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  .fixtures-grid { display: flex; flex-direction: column; gap: 12px; }
+  .fixture-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .fixture-teams { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px; }
+  .fixture-teams .home { font-weight: 700; text-align: right; flex: 1; }
+  .fixture-teams .away { font-weight: 700; text-align: left; flex: 1; }
+  .fixture-teams .vs { color: var(--text-dim); font-size: 0.9rem; }
+  .fixture-score {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2rem;
+  }
+  .fixture-score .goals { font-weight: 800; font-size: 1.4rem; letter-spacing: 1px; }
+  .fixture-score.simulated .goals { color: #fcd34d; }
+  .fixture-actions { display: flex; gap: 8px; }
+  .sim-all { width: 100%; margin-top: 10px; background: var(--blue); }
+  .sim-all:hover { background: #60a5fa; }
+  table.standings { width: 100%; border-collapse: collapse; }
+  table.standings th, table.standings td {
+    text-align: center;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.standings th { color: var(--text-dim); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  table.standings td { font-size: 0.95rem; }
+  table.standings td:nth-child(2) { text-align: left; font-weight: 700; }
+  table.standings td:nth-child(10) { color: var(--accent); font-size: 1.1rem; }
+  tr.leader { background: rgba(34,197,94,0.1); }
+  .modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+  .modal.hidden { display: none; }
+  .modal-content {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%; max-width: 400px;
+  }
+  .score-inputs {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin: 20px 0;
+  }
+  .score-inputs div { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; }
+  .score-inputs input { width: 80px; text-align: center; font-size: 1.5rem; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .empty-state { color: var(--text-dim); text-align: center; padding: 20px; }
+  .stats-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stats-bar .stat-pill { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <h1 id="leagueName" contenteditable="true">eFootball Kickoff League</h1>
+    <nav>
+      <button data-tab="teams" class="active">Teams</button>
+      <button data-tab="fixtures">Fixtures</button>
+      <button data-tab="table">Table</button>
+      <button data-tab="export">Save / Load</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- TEAMS TAB -->
+    <div id="teams-tab" class="tab-panel active">
+      <div class="card">
+        <h2>Add Team</h2>
+        <div class="input-group">
+          <input type="text" id="teamName" placeholder="Team Name (e.g., FC Barcelona)" maxlength="30">
+        </div>
+        <div class="rating-grid">
+          <div class="input-group">
+            <label>OVR: <span id="ovrVal">80</span><span class="stars" id="ovrStars">★★★★☆</span></label>
+            <input type="number" id="ovr" min="1" max="99" value="80" oninput="updateStarDisplay('ovr', this.value)">
+          </div>
+          <div class="input-group">
+            <label>FW: <span id="fwVal">80</span><span class="stars" id="fwStars">★★★★☆</span></label>
+            <input type="number" id="fw" min="1" max="99" value="80" oninput="updateStarDisplay('fw', this.value)">
+          </div>
+          <div class="input-group">
+            <label>MF: <span id="mfVal">80</span><span class="stars" id="mfStars">★★★★☆</span></label>
+            <input type="number" id="mf" min="1" max="99" value="80" oninput="updateStarDisplay('mf', this.value)">
+          </div>
+          <div class="input-group">
+            <label>DF: <span id="dfVal">80</span><span class="stars" id="dfStars">★★★★☆</span></label>
+            <input type="number" id="df" min="1" max="99" value="80" oninput="updateStarDisplay('df', this.value)">
+          </div>
+        </div>
+        <button onclick="addTeam()" style="margin-top:8px;">Add to League</button>
+      </div>
+
+      <div class="card">
+        <h2>Squad List</h2>
+        <div id="teamsList">
+          <div class="empty-state">No teams added yet.</div>
+        </div>
+        <div id="seasonActions" class="actions" style="display:none;">
+          <button onclick="generateSeason(1)">Generate Season (1 Round)</button>
+          <button onclick="generateSeason(2)">Generate Season (Home & Away)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIXTURES TAB -->
+    <div id="fixtures-tab" class="tab-panel">
+      <div class="card">
+        <div class="matchday-controls">
+          <button class="secondary" onclick="prevMatchday()">← Prev</button>
+          <span>Matchday <span id="matchdayNum">1</span></span>
+          <button class="secondary" onclick="nextMatchday()">Next →</button>
+        </div>
+        <div id="matchdayContainer">
+          <div class="empty-state">Generate a season to see fixtures.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLE TAB -->
+    <div id="table-tab" class="tab-panel">
+      <div class="card">
+        <div class="stats-bar" id="statsBar"></div>
+        <table class="standings">
+          <thead>
+            <tr>
+              <th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th>
+              <th>GF</th><th>GA</th><th>GD</th><th>Pts</th>
+            </tr>
+          </thead>
+          <tbody id="standingsBody">
+            <tr><td colspan="10" class="empty-state">No data yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- EXPORT TAB -->
+    <div id="export-tab" class="tab-panel">
+      <div class="card">
+        <h2>Save Season</h2>
+        <p style="margin-bottom:12px;color:var(--text-dim);">Download your league data so you can load it again later.</p>
+        <button onclick="exportJSON()">Download JSON</button>
+      </div>
+      <div class="card">
+        <h2>Load Season</h2>
+        <p style="margin-bottom:12px;color:var(--text-dim);">Pick a previously saved league file.</p>
+        <input type="file" id="importFile" accept=".json" onchange="importJSON(this)">
+      </div>
+      <div class="card">
+        <h2>Reset</h2>
+        <p style="margin-bottom:12px;color:var(--text-dim);">Clear everything and start over.</p>
+        <button class="danger" onclick="resetSeason()">Reset League</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MANUAL RESULT MODAL -->
+<div id="modal" class="modal hidden">
+  <div class="modal-content">
+    <h3 style="text-align:center;margin-bottom:8px;">Enter Result</h3>
+    <div class="score-inputs">
+      <div>
+        <span id="modalHome" style="font-weight:700;color:var(--accent);"></span>
+        <input type="number" id="homeScore" min="0" max="20" value="0">
+      </div>
+      <div style="font-size:1.2rem;color:var(--text-dim);">vs</div>
+      <div>
+        <span id="modalAway" style="font-weight:700;color:var(--accent);"></span>
+        <input type="number" id="awayScore" min="0" max="20" value="0">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button onclick="confirmManualResult()">Save Result</button>
+      <button class="secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function starsFromVal(v) {
+  const s = Math.min(5, Math.max(1, Math.round(v / 20)));
+  const empty = 5 - s;
+  return '★'.repeat(s) + '<span class="stars empty">' + '☆'.repeat(empty) + '</span>';
+}
+
+function updateStarDisplay(id, value) {
+  document.getElementById(id + 'Val').textContent = value;
+  document.getElementById(id + 'Stars').innerHTML = starsFromVal(value);
+}
+
+let state = {
+  leagueName: "eFootball Kickoff League",
+  teams: [],
+  fixtures: [],
+  seasonStarted: false,
+  selectedMatchday: 1,
+  currentModalFixture: null
+};
+
+function addTeam() {
+  const nameIn = document.getElementById('teamName');
+  const name = nameIn.value.trim();
+  if (!name) return alert("Enter a team name.");
+  if (state.teams.find(t => t.name.toLowerCase() === name.toLowerCase())) return alert("Team already exists.");
+  
+  const ovr = parseInt(document.getElementById('ovr').value);
+  const fw = parseInt(document.getElementById('fw').value);
+  const mf = parseInt(document.getElementById('mf').value);
+  const df = parseInt(document.getElementById('df').value);
+  
+  state.teams.push({
+    id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random().toString(36),
+    name, ovr, fw, mf, df,
+    played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, points: 0
+  });
+  
+  nameIn.value = '';
+  ['ovr','fw','mf','df'].forEach(k => {
+    document.getElementById(k).value = 80;
+    updateStarDisplay(k, 80);
+  });
+  
+  renderTeams();
+}
+
+function removeTeam(id) {
+  if (state.seasonStarted) {
+    alert("You can't remove teams after the season has started. Reset the league if you need to change the lineup.");
+    return;
+  }
+  state.teams = state.teams.filter(t => t.id !== id);
+  renderTeams();
+}
+
+function checkConsecutive(schedule, teams) {
+  let maxStreak = 0;
+  teams.forEach(team => {
+    let streak = 0;
+    let currentVenue = null;
+    schedule.forEach(round => {
+      const match = round.find(m => m.homeId === team.id || m.awayId === team.id);
+      if (!match) {
+        streak = 0;
+        currentVenue = null;
+        return;
+      }
+      const venue = match.homeId === team.id ? 'H' : 'A';
+      if (venue === currentVenue) {
+        streak++;
+      } else {
+        streak = 1;
+        currentVenue = venue;
+      }
+      maxStreak = Math.max(maxStreak, streak);
+    });
+  });
+  return maxStreak;
+}
+
+function generateRoundRobin(teams, rounds) {
+  let list = [...teams];
+  if (list.length % 2 === 1) list.push(null);
+  const numRounds = list.length - 1;
+  
+  function buildFirstHalf(flipMask) {
+    let current = [...list];
+    const schedule = [];
+    for (let r = 0; r < numRounds; r++) {
+      const round = [];
+      for (let i = 0; i < current.length / 2; i++) {
+        const home = current[i];
+        const away = current[current.length - 1 - i];
+        if (home && away) {
+          const flip = flipMask ? flipMask[r] : false;
+          if (flip) {
+            round.push({ homeId: away.id, awayId: home.id });
+          } else {
+            round.push({ homeId: home.id, awayId: away.id });
+          }
+        }
+      }
+      schedule.push(round);
+      current = [current[0], current[current.length - 1], ...current.slice(1, current.length - 1)];
+    }
+    return schedule;
+  }
+  
+  function shuffleArray(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  
+  // Single Round Robin
+  if (rounds === 1) {
+    let valid = false;
+    let attempts = 0;
+    let firstHalf = [];
+    while (!valid && attempts < 500) {
+      attempts++;
+      const flipMask = Array.from({ length: numRounds }, () => Math.random() < 0.5);
+      const allTrue = flipMask.every(x => x);
+      const allFalse = flipMask.every(x => !x);
+      if (allTrue || allFalse) continue;
+      firstHalf = buildFirstHalf(flipMask);
+      valid = checkConsecutive(firstHalf, teams) <= 3;
+    }
+    if (!valid) {
+      const fallbackMask = Array.from({ length: numRounds }, (_, i) => i % 3 === 1);
+      firstHalf = buildFirstHalf(fallbackMask);
+    }
+    return firstHalf;
+  }
+  
+  // Double Round Robin
+  let valid = false;
+  let attempts = 0;
+  let schedule = [];
+  
+  while (!valid && attempts < 500) {
+    attempts++;
+    const flipMask = Array.from({ length: numRounds }, () => Math.random() < 0.5);
+    const allTrue = flipMask.every(x => x);
+    const allFalse = flipMask.every(x => !x);
+    if (allTrue || allFalse) continue;
+    
+    const baseFirstHalf = buildFirstHalf(flipMask);
+    const baseSecondHalf = baseFirstHalf.map(round => 
+      round.map(m => ({ homeId: m.awayId, awayId: m.homeId }))
+    );
+    
+    // Shuffle the rounds WITHIN the first half and second half independently
+    const shuffledFirstHalf = shuffleArray(baseFirstHalf);
+    const shuffledSecondHalf = shuffleArray(baseSecondHalf);
+    
+    // Concatenate them sequentially instead of interleaving
+    const testSchedule = [...shuffledFirstHalf, ...shuffledSecondHalf];
+    
+    if (checkConsecutive(testSchedule, teams) <= 3) {
+      valid = true;
+      schedule = testSchedule;
+    }
+  }
+  
+  // Fallback if the strict randomizer fails
+  if (!valid) {
+    const fallbackMask = Array.from({ length: numRounds }, (_, i) => i % 3 === 1);
+    const baseFirstHalf = buildFirstHalf(fallbackMask);
+    const baseSecondHalf = baseFirstHalf.map(round => 
+      round.map(m => ({ homeId: m.awayId, awayId: m.homeId }))
+    );
+    
+    let shuffleAttempts = 0;
+    while (shuffleAttempts < 100) {
+      schedule = [...shuffleArray(baseFirstHalf), ...shuffleArray(baseSecondHalf)];
+      if (checkConsecutive(schedule, teams) <= 3) break;
+      shuffleAttempts++;
+    }
+  }
+  
+  return schedule;
+}
+
+
+function generateSeason(rounds) {
+  if (state.teams.length < 2) return alert("Add at least 2 teams first.");
+  state.seasonStarted = true;
+  const sched = generateRoundRobin(state.teams, rounds);
+  state.fixtures = [];
+  sched.forEach((round, idx) => {
+    round.forEach((m, mIdx) => {
+      state.fixtures.push({
+        id: `md${idx+1}-m${mIdx}`,
+        matchday: idx + 1,
+        homeId: m.homeId,
+        awayId: m.awayId,
+        homeGoals: null,
+        awayGoals: null,
+        played: false,
+        isSimulated: false
+      });
+    });
+  });
+  state.selectedMatchday = 1;
+  renderTeams();
+  renderFixtures();
+  renderTable();
+  switchTab('fixtures');
+}
+
+function getMatchdayFixtures(md) {
+  return state.fixtures.filter(f => f.matchday === md);
+}
+
+function prevMatchday() {
+  if (state.selectedMatchday > 1) {
+    state.selectedMatchday--;
+    renderFixtures();
+  }
+}
+
+function nextMatchday() {
+  const max = Math.max(...state.fixtures.map(f => f.matchday), 1);
+  if (state.selectedMatchday < max) {
+    state.selectedMatchday++;
+    renderFixtures();
+  }
+}
+
+function poisson(lambda) {
+  const L = Math.exp(-lambda);
+  let k = 0;
+  let p = 1;
+  do {
+    k++;
+    p *= Math.random();
+  } while (p > L);
+  return Math.min(k - 1, 8);
+}
+
+function simulateMatch(fixtureId) {
+  const f = state.fixtures.find(x => x.id === fixtureId);
+  if (!f || f.played) return;
+  const home = state.teams.find(t => t.id === f.homeId);
+  const away = state.teams.find(t => t.id === f.awayId);
+  if (!home || !away) return;
+
+  const homeAttack = home.fw * 0.6 + home.ovr * 0.4;
+  const homeDefense = home.df * 0.6 + home.ovr * 0.4;
+  const homeMid = home.mf * 0.6 + home.ovr * 0.4;
+  
+  const awayAttack = away.fw * 0.6 + away.ovr * 0.4;
+  const awayDefense = away.df * 0.6 + away.ovr * 0.4;
+  const awayMid = away.mf * 0.6 + away.ovr * 0.4;
+
+  const totalMid = homeMid + awayMid;
+  const homeMidShare = totalMid > 0 ? homeMid / totalMid : 0.5;
+  
+  const homeBase = (homeAttack / (homeAttack + awayDefense)) * (2.2 + 1.2 * homeMidShare) + 0.3;
+  const awayBase = (awayAttack / (awayAttack + homeDefense)) * (2.2 + 1.2 * (1 - homeMidShare));
+  
+  let expHome = homeBase * (0.8 + Math.random() * 0.4);
+  let expAway = awayBase * (0.8 + Math.random() * 0.4);
+  
+  let hg = poisson(expHome);
+  let ag = poisson(expAway);
+  
+  if (Math.random() < 0.03) hg += 1;
+  if (Math.random() < 0.03) ag += 1;
+  if (hg > 8) hg = 8;
+  if (ag > 8) ag = 8;
+  
+  saveResult(f, hg, ag, true);
+}
+
+function openManualModal(fixtureId) {
+  const f = state.fixtures.find(x => x.id === fixtureId);
+  if (!f) return;
+  const home = state.teams.find(t => t.id === f.homeId);
+  const away = state.teams.find(t => t.id === f.awayId);
+  state.currentModalFixture = fixtureId;
+  document.getElementById('modalHome').textContent = home ? home.name : 'Home';
+  document.getElementById('modalAway').textContent = away ? away.name : 'Away';
+  document.getElementById('homeScore').value = 0;
+  document.getElementById('awayScore').value = 0;
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function confirmManualResult() {
+  const f = state.fixtures.find(x => x.id === state.currentModalFixture);
+  if (!f) return;
+  const hg = parseInt(document.getElementById('homeScore').value) || 0;
+  const ag = parseInt(document.getElementById('awayScore').value) || 0;
+  saveResult(f, hg, ag, false);
+  closeModal();
+}
+
+function saveResult(f, hg, ag, isSim) {
+  if (f.played) revertStats(f);
+  f.homeGoals = hg;
+  f.awayGoals = ag;
+  f.played = true;
+  f.isSimulated = isSim;
+
+  const home = state.teams.find(t => t.id === f.homeId);
+  const away = state.teams.find(t => t.id === f.awayId);
+  if (!home || !away) return;
+
+  home.played++; away.played++;
+  home.gf += hg; home.ga += ag;
+  away.gf += ag; away.ga += hg;
+
+  if (hg > ag) {
+    home.wins++; away.losses++; home.points += 3;
+  } else if (hg < ag) {
+    away.wins++; home.losses++; away.points += 3;
+  } else {
+    home.draws++; away.draws++; home.points++; away.points++;
+  }
+  renderFixtures();
+  renderTable();
+}
+
+function revertStats(f) {
+  const home = state.teams.find(t => t.id === f.homeId);
+  const away = state.teams.find(t => t.id === f.awayId);
+  if (!home || !away) return;
+  const hg = f.homeGoals || 0;
+  const ag = f.awayGoals || 0;
+  home.played--; away.played--;
+  home.gf -= hg; home.ga -= ag;
+  away.gf -= ag; away.ga -= hg;
+  if (hg > ag) {
+    home.wins--; away.losses--; home.points -= 3;
+  } else if (hg < ag) {
+    away.wins--; home.losses--; away.points -= 3;
+  } else {
+    home.draws--; away.draws--; home.points--; away.points--;
+  }
+}
+
+function resetFixture(id) {
+  const f = state.fixtures.find(x => x.id === id);
+  if (!f || !f.played) return;
+  revertStats(f);
+  f.played = false;
+  f.homeGoals = null; f.awayGoals = null; f.isSimulated = false;
+  renderFixtures();
+  renderTable();
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.add('hidden');
+  state.currentModalFixture = null;
+}
+
+function simMatchday(md) {
+  getMatchdayFixtures(md).filter(f => !f.played).forEach(f => simulateMatch(f.id));
+}
+
+function computeStandings() {
+  return [...state.teams].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const gdA = a.gf - a.ga;
+    const gdB = b.gf - b.ga;
+    if (gdB !== gdA) return gdB - gdA;
+    return b.gf - a.gf;
+  });
+}
+
+function renderTeams() {
+  const list = document.getElementById('teamsList');
+  const actions = document.getElementById('seasonActions');
+  if (state.teams.length === 0) {
+    list.innerHTML = '<div class="empty-state">No teams added yet.</div>';
+  } else {
+    let html = '<ul class="team-list">';
+    state.teams.forEach(t => {
+      html += `<li>
+        <div>
+          <div style="font-weight:700;margin-bottom:4px;">${t.name}</div>
+          <div class="team-ratings">
+            <span class="badge">OVR ${t.ovr}</span>
+            <span class="badge">FW ${t.fw}</span>
+            <span class="badge">MF ${t.mf}</span>
+            <span class="badge">DF ${t.df}</span>
+          </div>
+        </div>
+        <button class="danger" onclick="removeTeam('${t.id}')">Remove</button>
+      </li>`;
+    });
+    html += '</ul>';
+    list.innerHTML = html;
+  }
+  actions.style.display = (!state.seasonStarted && state.teams.length >= 2) ? 'flex' : 'none';
+}
+
+function renderFixtures() {
+  const container = document.getElementById('matchdayContainer');
+  const numEl = document.getElementById('matchdayNum');
+  if (!state.fixtures.length) {
+    container.innerHTML = '<div class="empty-state">Generate a season to see fixtures.</div>';
+    numEl.textContent = '1';
+    return;
+  }
+  const md = state.selectedMatchday;
+  numEl.textContent = md;
+  const fixtures = getMatchdayFixtures(md);
+  let html = '<div class="fixtures-grid">';
+  fixtures.forEach(f => {
+    const home = state.teams.find(t => t.id === f.homeId);
+    const away = state.teams.find(t => t.id === f.awayId);
+    const hName = home ? home.name : 'Unknown';
+    const aName = away ? away.name : 'Unknown';
+    html += `<div class="fixture-card">
+      <div class="fixture-teams">
+        <span class="home">${hName}</span>
+        <span class="vs">vs</span>
+        <span class="away">${aName}</span>
+      </div>`;
+    if (f.played) {
+      html += `<div class="fixture-score ${f.isSimulated ? 'simulated' : ''}">
+        <span class="goals">${f.homeGoals} - ${f.awayGoals}</span>
+        <span class="badge">${f.isSimulated ? 'SIM' : 'YOU'}</span>
+        <button class="secondary" onclick="resetFixture('${f.id}')">Reset</button>
+      </div>`;
+    } else {
+      html += `<div class="fixture-actions">
+        <button onclick="openManualModal('${f.id}')">Enter Result</button>
+        <button class="secondary" onclick="simulateMatch('${f.id}')">Sim</button>
+      </div>`;
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  const unplayed = fixtures.filter(f => !f.played).length;
+  if (unplayed > 0) {
+    html += `<button class="sim-all" onclick="simMatchday(${md})">Sim All Unplayed on Matchday ${md}</button>`;
+  }
+  container.innerHTML = html;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('standingsBody');
+  const statsBar = document.getElementById('statsBar');
+  if (!state.seasonStarted || state.teams.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No data yet.</td></tr>';
+    statsBar.innerHTML = '';
+    return;
+  }
+  const standings = computeStandings();
+  let html = '';
+  standings.forEach((t, i) => {
+    const gd = t.gf - t.ga;
+    html += `<tr class="${i === 0 ? 'leader' : ''}">
+      <td>${i + 1}</td>
+      <td>${t.name}</td>
+      <td>${t.played}</td>
+      <td>${t.wins}</td>
+      <td>${t.draws}</td>
+      <td>${t.losses}</td>
+      <td>${t.gf}</td>
+      <td>${t.ga}</td>
+      <td>${gd > 0 ? '+' : ''}${gd}</td>
+      <td><strong>${t.points}</strong></td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+
+  const played = state.fixtures.filter(f => f.played).length;
+  const total = state.fixtures.length;
+  const simmed = state.fixtures.filter(f => f.isSimulated).length;
+  const remaining = total - played;
+  statsBar.innerHTML = `
+    <div class="stat-pill">Matchday ${state.selectedMatchday}</div>
+    <div class="stat-pill">Played: ${played}/${total}</div>
+    <div class="stat-pill">Simulated: ${simmed}</div>
+    <div class="stat-pill">Remaining: ${remaining}</div>
+  `;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tab + '-tab'));
+  if (tab === 'teams') renderTeams();
+  if (tab === 'fixtures') renderFixtures();
+  if (tab === 'table') renderTable();
+}
+
+function exportJSON() {
+  const payload = JSON.stringify(state, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const name = (document.getElementById('leagueName').textContent.trim() || 'league').replace(/\s+/g, '_');
+  a.href = url;
+  a.download = `${name}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (Array.isArray(data.teams) && Array.isArray(data.fixtures)) {
+        state = data;
+        if (!state.selectedMatchday) state.selectedMatchday = 1;
+        if (state.leagueName) document.getElementById('leagueName').textContent = state.leagueName;
+        renderTeams();
+        renderFixtures();
+        renderTable();
+        switchTab('fixtures');
+      } else {
+        alert('Invalid league file.');
+      }
+    } catch (err) {
+      alert('Error reading file.');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function resetSeason() {
+  if (!confirm('This will wipe your entire league. Are you sure?')) return;
+  state = {
+    leagueName: "eFootball Kickoff League",
+    teams: [],
+    fixtures: [],
+    seasonStarted: false,
+    selectedMatchday: 1,
+    currentModalFixture: null
+  };
+  document.getElementById('leagueName').textContent = state.leagueName;
+  ['ovr','fw','mf','df'].forEach(k => {
+    document.getElementById(k).value = 80;
+    updateStarDisplay(k, 80);
+  });
+  renderTeams();
+  renderFixtures();
+  renderTable();
+  switchTab('teams');
+}
+
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+document.getElementById('leagueName').addEventListener('blur', () => {
+  state.leagueName = document.getElementById('leagueName').textContent.trim();
+});
+
+renderTeams();
+renderFixtures();
+renderTable();
+</script>
+
+</body>
+</html>
