@@ -236,7 +236,6 @@
   </header>
 
   <main>
-    <!-- TEAMS TAB -->
     <div id="teams-tab" class="tab-panel active">
       <div class="card">
         <h2>Add Team</h2>
@@ -276,7 +275,6 @@
       </div>
     </div>
 
-    <!-- FIXTURES TAB -->
     <div id="fixtures-tab" class="tab-panel">
       <div class="card">
         <div class="matchday-controls">
@@ -290,7 +288,6 @@
       </div>
     </div>
 
-    <!-- TABLE TAB -->
     <div id="table-tab" class="tab-panel">
       <div class="card">
         <div class="stats-bar" id="statsBar"></div>
@@ -308,7 +305,6 @@
       </div>
     </div>
 
-    <!-- EXPORT TAB -->
     <div id="export-tab" class="tab-panel">
       <div class="card">
         <h2>Save Season</h2>
@@ -329,7 +325,6 @@
   </main>
 </div>
 
-<!-- MANUAL RESULT MODAL -->
 <div id="modal" class="modal hidden">
   <div class="modal-content">
     <h3 style="text-align:center;margin-bottom:8px;">Enter Result</h3>
@@ -352,6 +347,133 @@
 </div>
 
 <script>
+// ==========================================
+// 1. LEAGUE CONFIGURATION (Easy to edit!)
+// ==========================================
+const DERBIES = [
+  // --- PREMIER LEAGUE HEAVYWEIGHTS ---
+  ["Manchester United", "Liverpool"],
+  ["Arsenal", "Tottenham Hotspur"],
+  ["Everton", "Liverpool"],
+  ["Manchester City", "Manchester United"],
+  ["Arsenal", "Chelsea"],
+  ["Chelsea", "Tottenham Hotspur"],
+  ["Leeds United", "Manchester United"],
+
+  // --- FIERCE REGIONAL & HISTORIC DERBIES ---
+  ["Newcastle United", "Sunderland"],
+  ["Aston Villa", "Birmingham City"],
+  ["Sheffield United", "Sheffield Wednesday"],
+  ["Millwall", "West Ham United"],
+  ["Portsmouth", "Southampton"],
+  ["Derby County", "Nottingham Forest"],
+  ["Ipswich Town", "Norwich City"],
+  ["West Bromwich Albion", "Wolverhampton Wanderers"],
+  ["Crystal Palace", "Brighton"],
+
+  // --- SECONDARY DERBIES & CLASHES ---
+  ["Aston Villa", "Wolverhampton Wanderers"],
+  ["Blackburn Rovers", "Burnley"],
+  ["Cardiff City", "Swansea City"],
+  ["Middlesbrough", "Sunderland"],
+  ["Newcastle United", "Middlesbrough"],
+  ["Leeds United", "Millwall"],
+  ["Chelsea", "Fulham"],
+  ["Brentford", "Fulham"],
+  ["Charlton Athletic", "Millwall"],
+  ["Charlton Athletic", "Crystal Palace"],
+  ["Leicester City", "Nottingham Forest"]
+];
+
+const TEAM_ALIASES = {
+  "Manchester United": ["man utd", "man u", "man united", "mufc"],
+  "Manchester City": ["man city", "city", "mcfc"],
+  "Tottenham Hotspur": ["spurs", "tottenham", "tottenham hotspurs"], 
+  "Wolverhampton Wanderers": ["wolves", "wolverhampton"],
+  "Nottingham Forest": ["forest", "nott forest", "notts forest"],
+  "West Ham United": ["west ham", "whufc", "irons"],
+  "Sheffield United": ["sheff utd", "sheffield utd", "blades"],
+  "Sheffield Wednesday": ["sheff wed", "sheffield wed", "owls"],
+  "Queens Park Rangers": ["qpr"],
+  "Aston Villa": ["villa"]
+};
+
+// ==========================================
+// 2. SIMULATION STATE & DATA
+// ==========================================
+let state = {
+  leagueName: "eFootball Kickoff League",
+  teams: [],
+  fixtures: [],
+  seasonStarted: false,
+  selectedMatchday: 1,
+  currentModalFixture: null
+};
+
+// ==========================================
+// 3. HELPER FUNCTIONS
+// ==========================================
+
+function standardizeName(inputName) {
+  const lowerInput = inputName.trim().toLowerCase();
+  for (const [standardName, aliases] of Object.entries(TEAM_ALIASES)) {
+    if (lowerInput === standardName.toLowerCase() || aliases.includes(lowerInput)) {
+      return standardName; 
+    }
+  }
+  return inputName; 
+}
+
+function isDerbyMatch(homeName, awayName) {
+  const stdHome = standardizeName(homeName);
+  const stdAway = standardizeName(awayName);
+  return DERBIES.some(pair => 
+    pair.includes(stdHome) && pair.includes(stdAway)
+  );
+}
+
+// Checks if the match is a 1st vs 2nd place clash
+function isTopTwoClash(homeId, awayId) {
+  const standings = computeStandings();
+  // Ensure the season has actually started and teams have played games
+  if (!standings || standings.length < 2 || standings[0].played === 0) return false;
+  
+  const firstPlace = standings[0].id;
+  const secondPlace = standings[1].id;
+  
+  return (homeId === firstPlace && awayId === secondPlace) || 
+         (homeId === secondPlace && awayId === firstPlace);
+}
+
+// Retroactively calculates momentum based on historical fixture results
+function recalculateAllMomentum() {
+  state.teams.forEach(t => t.momentum = 0);
+
+  const playedFixtures = state.fixtures
+    .filter(f => f.played)
+    .sort((a, b) => a.matchday - b.matchday);
+
+  playedFixtures.forEach(f => {
+    const home = state.teams.find(t => t.id === f.homeId);
+    const away = state.teams.find(t => t.id === f.awayId);
+    if (!home || !away) return;
+
+    if (f.homeGoals > f.awayGoals) {
+      home.momentum = Math.min((home.momentum || 0) + 1, 5);
+      away.momentum = Math.max((away.momentum || 0) - 1, -5);
+    } else if (f.homeGoals < f.awayGoals) {
+      away.momentum = Math.min((away.momentum || 0) + 1, 5);
+      home.momentum = Math.max((home.momentum || 0) - 1, -5);
+    } else {
+      home.momentum = Math.round((home.momentum || 0) * 0.5);
+      away.momentum = Math.round((away.momentum || 0) * 0.5);
+    }
+  });
+
+  console.log("System Status: Momentum retroactively synchronized with historical fixture data.");
+}
+
+
 function starsFromVal(v) {
   const s = Math.min(5, Math.max(1, Math.round(v / 20)));
   const empty = 5 - s;
@@ -362,15 +484,6 @@ function updateStarDisplay(id, value) {
   document.getElementById(id + 'Val').textContent = value;
   document.getElementById(id + 'Stars').innerHTML = starsFromVal(value);
 }
-
-let state = {
-  leagueName: "eFootball Kickoff League",
-  teams: [],
-  fixtures: [],
-  seasonStarted: false,
-  selectedMatchday: 1,
-  currentModalFixture: null
-};
 
 function addTeam() {
   const nameIn = document.getElementById('teamName');
@@ -386,7 +499,8 @@ function addTeam() {
   state.teams.push({
     id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random().toString(36),
     name, ovr, fw, mf, df,
-    played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, points: 0
+    played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, points: 0,
+    momentum: 0 // Initialize at baseline
   });
   
   nameIn.value = '';
@@ -469,7 +583,6 @@ function generateRoundRobin(teams, rounds) {
     return a;
   }
   
-  // Single Round Robin
   if (rounds === 1) {
     let valid = false;
     let attempts = 0;
@@ -490,7 +603,6 @@ function generateRoundRobin(teams, rounds) {
     return firstHalf;
   }
   
-  // Double Round Robin
   let valid = false;
   let attempts = 0;
   let schedule = [];
@@ -507,11 +619,9 @@ function generateRoundRobin(teams, rounds) {
       round.map(m => ({ homeId: m.awayId, awayId: m.homeId }))
     );
     
-    // Shuffle the rounds WITHIN the first half and second half independently
     const shuffledFirstHalf = shuffleArray(baseFirstHalf);
     const shuffledSecondHalf = shuffleArray(baseSecondHalf);
     
-    // Concatenate them sequentially instead of interleaving
     const testSchedule = [...shuffledFirstHalf, ...shuffledSecondHalf];
     
     if (checkConsecutive(testSchedule, teams) <= 3) {
@@ -520,7 +630,6 @@ function generateRoundRobin(teams, rounds) {
     }
   }
   
-  // Fallback if the strict randomizer fails
   if (!valid) {
     const fallbackMask = Array.from({ length: numRounds }, (_, i) => i % 3 === 1);
     const baseFirstHalf = buildFirstHalf(fallbackMask);
@@ -538,7 +647,6 @@ function generateRoundRobin(teams, rounds) {
   
   return schedule;
 }
-
 
 function generateSeason(rounds) {
   if (state.teams.length < 2) return alert("Add at least 2 teams first.");
@@ -596,6 +704,7 @@ function poisson(lambda) {
   return Math.min(k - 1, 8);
 }
 
+// THE UPDATED SIMULATION ENGINE
 function simulateMatch(fixtureId) {
   const f = state.fixtures.find(x => x.id === fixtureId);
   if (!f || f.played) return;
@@ -617,18 +726,54 @@ function simulateMatch(fixtureId) {
   const homeBase = (homeAttack / (homeAttack + awayDefense)) * (2.2 + 1.2 * homeMidShare) + 0.3;
   const awayBase = (awayAttack / (awayAttack + homeDefense)) * (2.2 + 1.2 * (1 - homeMidShare));
   
-  let expHome = homeBase * (0.8 + Math.random() * 0.4);
-  let expAway = awayBase * (0.8 + Math.random() * 0.4);
+  // Read momentum defensively
+  const homeMom = home.momentum || 0;
+  const awayMom = away.momentum || 0;
+
+  // Apply Momentum Modifiers
+  const homeMomMod = 1 + (homeMom * 0.02);
+  const awayMomMod = 1 + (awayMom * 0.02);
+
+  let expHome = homeBase * (0.8 + Math.random() * 0.4) * homeMomMod;
+  let expAway = awayBase * (0.8 + Math.random() * 0.4) * awayMomMod;
+  
+  // --- MODIFIERS LOGIC ---
+  const isRivalry = isDerbyMatch(home.name, away.name);
+  const isSummitClash = isTopTwoClash(home.id, away.id);
+  
+  let chaosChance = 0.01; // Base 1% chance
+  
+  if (isRivalry) chaosChance = 0.05; // Boost to 5% for derbies
+  
+  if (isSummitClash) {
+    // Drop expected goals by 15% due to cagey tactical play
+    expHome *= 0.85;
+    expAway *= 0.85;
+    // Boost chaos chance to 8% due to high stakes drama
+    chaosChance = 0.08;
+  }
+  // ---------------------------
   
   let hg = poisson(expHome);
   let ag = poisson(expAway);
   
-  if (Math.random() < 0.03) hg += 1;
-  if (Math.random() < 0.03) ag += 1;
+  if (Math.random() < chaosChance) hg += 1;
+  if (Math.random() < chaosChance) ag += 1;
+  
   if (hg > 8) hg = 8;
   if (ag > 8) ag = 8;
   
   saveResult(f, hg, ag, true);
+}
+
+function computeStandings() {
+  return [...state.teams].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const gdA = a.gf - a.ga;
+    const gdB = b.gf - b.ga;
+    if (gdB !== gdA) return gdB - gdA;
+    return b.gf - a.gf;
+  });
 }
 
 function openManualModal(fixtureId) {
@@ -663,6 +808,22 @@ function saveResult(f, hg, ag, isSim) {
   const home = state.teams.find(t => t.id === f.homeId);
   const away = state.teams.find(t => t.id === f.awayId);
   if (!home || !away) return;
+
+  // Initialize momentum defensively
+  if (typeof home.momentum === 'undefined') home.momentum = 0;
+  if (typeof away.momentum === 'undefined') away.momentum = 0;
+
+  // Update Momentum
+  if (hg > ag) {
+    home.momentum = Math.min(home.momentum + 1, 5);
+    away.momentum = Math.max(away.momentum - 1, -5);
+  } else if (hg < ag) {
+    away.momentum = Math.min(away.momentum + 1, 5);
+    home.momentum = Math.max(home.momentum - 1, -5);
+  } else {
+    home.momentum = Math.round(home.momentum * 0.5);
+    away.momentum = Math.round(away.momentum * 0.5);
+  }
 
   home.played++; away.played++;
   home.gf += hg; home.ga += ag;
@@ -714,16 +875,6 @@ function closeModal() {
 
 function simMatchday(md) {
   getMatchdayFixtures(md).filter(f => !f.played).forEach(f => simulateMatch(f.id));
-}
-
-function computeStandings() {
-  return [...state.teams].sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    const gdA = a.gf - a.ga;
-    const gdB = b.gf - b.ga;
-    if (gdB !== gdA) return gdB - gdA;
-    return b.gf - a.gf;
-  });
 }
 
 function renderTeams() {
@@ -868,6 +1019,10 @@ function importJSON(input) {
         state = data;
         if (!state.selectedMatchday) state.selectedMatchday = 1;
         if (state.leagueName) document.getElementById('leagueName').textContent = state.leagueName;
+        
+        // Sync momentum with historical fixture data upon loading
+        recalculateAllMomentum();
+
         renderTeams();
         renderFixtures();
         renderTable();
